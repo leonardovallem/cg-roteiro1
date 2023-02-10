@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
@@ -97,8 +98,11 @@ fun App() {
         ) {
             Canvas(
                 modifier = Modifier
+                    .padding(16.dp)
+                    .border(1.dp, Color.Gray)
+                    .padding(1.dp)
                     .weight(7f)
-                    .border(2.dp, Color.Gray)
+                    .fillMaxHeight()
                     .pointerInput(Unit) {
                         detectDragGestures(matcher = PointerMatcher.Primary) {
                             drawings.add(it)
