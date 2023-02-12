@@ -1,17 +1,30 @@
+package components
+
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.ExperimentalAnimationApi
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.with
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Palette
+import androidx.compose.material3.Divider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -27,7 +40,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.rememberDialogState
 import kotlin.math.roundToInt
+import toHexString
 
+@OptIn(ExperimentalAnimationApi::class)
 @Composable
 fun ColorPicker(
     value: Color,
@@ -43,40 +58,39 @@ fun ColorPicker(
         derivedStateOf { Color(red, green, blue, alpha) }
     }
 
+    val saveButtonEnabled by remember {
+        derivedStateOf { currentColor != value }
+    }
+
     Dialog(
         onCloseRequest = onDismiss,
         title = "Select a color",
         state = rememberDialogState(height = 600.dp)
     ) {
         Column(
+            verticalArrangement = Arrangement.spacedBy(24.dp),
             modifier = Modifier
                 .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
                 .clip(RoundedCornerShape(8.dp))
-                .background(MaterialTheme.colorScheme.surface)
+                .background(MaterialTheme.colorScheme.surfaceColorAtElevation(3.dp)),
         ) {
-            Row(
+            Icon(
+                imageVector = Icons.Rounded.Palette,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.secondary,
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(24.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(
-                    text = "Select a color",
-                    style = MaterialTheme.typography.titleLarge,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
+                    .align(Alignment.CenterHorizontally)
+                    .padding(top = 24.dp)
+            )
 
-                TextButton(
-                    onClick = {
-                        onChange(currentColor)
-                        onDismiss()
-                    },
-                    modifier = Modifier.padding(start = 24.dp)
-                ) {
-                    Text("Save")
-                }
-            }
+            Text(
+                text = "Select a color",
+                style = MaterialTheme.typography.headlineSmall,
+                color = MaterialTheme.colorScheme.onSurface,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
+            )
 
             Text(
                 text = currentColor.toHexString(),
@@ -87,10 +101,31 @@ fun ColorPicker(
                     .padding(24.dp)
             )
 
+            Divider(modifier = Modifier.fillMaxWidth())
+
             ColorSlider(value = alpha, onValueChange = { alpha = it }, channel = ColorChannel.Alpha)
             ColorSlider(value = red, onValueChange = { red = it }, channel = ColorChannel.Red)
             ColorSlider(value = green, onValueChange = { green = it }, channel = ColorChannel.Green)
             ColorSlider(value = blue, onValueChange = { blue = it }, channel = ColorChannel.Blue)
+
+            Divider(modifier = Modifier.fillMaxWidth())
+
+            AnimatedContent(
+                targetState = saveButtonEnabled,
+                transitionSpec = { fadeIn() with fadeOut() },
+                modifier = Modifier.align(Alignment.End)
+            ) {
+                TextButton(
+                    enabled = it,
+                    onClick = {
+                        onChange(currentColor)
+                        onDismiss()
+                    },
+                    modifier = Modifier.padding(end = 24.dp, bottom = 24.dp)
+                ) {
+                    Text(text = "Save")
+                }
+            }
         }
     }
 }
@@ -102,7 +137,7 @@ fun ColorSlider(
     channel: ColorChannel,
     modifier: Modifier = Modifier
 ) {
-    BoxWithConstraints(modifier = modifier.padding(24.dp)) {
+    BoxWithConstraints(modifier = modifier.padding(horizontal = 24.dp)) {
         Text(
             channel.symbol.toString(),
             style = MaterialTheme.typography.labelLarge,

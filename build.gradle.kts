@@ -28,6 +28,7 @@ kotlin {
             dependencies {
                 @OptIn(ExperimentalComposeLibrary::class)
                 implementation(compose.material3)
+                implementation(compose.materialIconsExtended)
                 implementation(compose.desktop.currentOs)
                 implementation(compose.preview)
             }
