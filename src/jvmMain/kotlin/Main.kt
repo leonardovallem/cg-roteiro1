@@ -8,11 +8,13 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
@@ -20,7 +22,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -36,16 +37,20 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.onPointerEvent
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import components.ColorPicker
+import components.Counter
 import components.DisappearingSimpleButton
 import components.SimpleButton
+import components.TransformationsDialog
 import utils.MouseEvent
 import utils.Point
 import utils.draw
 import utils.toHexString
+import utils.transform
 import utils.withColor
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalComposeUiApi::class)
@@ -55,13 +60,17 @@ fun App() {
     val focusManager = LocalFocusManager.current
 
     var mouseEvent by remember { mutableStateOf(MouseEvent.Up) }
-    val drawings = remember { mutableStateListOf<Point>() }
+    var drawings by remember { mutableStateOf(emptyList<Point>()) }
     var currentPixels by remember { mutableStateOf(0) }
 
     var showColorPicker by remember { mutableStateOf(false) }
+    var showTransformationsDialog by remember { mutableStateOf(false) }
+
+    var pixelScale by remember { mutableStateOf(1) }
+    var color by remember { mutableStateOf(Color.Black) }
+
     var x by remember { mutableStateOf("") }
     var y by remember { mutableStateOf("") }
-    var color by remember { mutableStateOf(Color.Black) }
     val validPoint by remember {
         derivedStateOf { x.toFloatOrNull() != null && y.toFloatOrNull() != null }
     }
@@ -69,18 +78,26 @@ fun App() {
     fun addDrawing() {
         if (!validPoint) return
 
-        drawings.add(Point(x, y, color))
+        drawings = drawings + Point(x, y, color)
         x = ""
         y = ""
     }
 
-    fun clearLastDrawing() = drawings.dropLast(currentPixels)
+    fun clearLastDrawing() {
+        drawings = drawings.dropLast(currentPixels)
+    }
 
     if (showColorPicker) ColorPicker(
         value = color,
         onChange = { color = it },
         onDismiss = { showColorPicker = false }
     )
+
+    if (showTransformationsDialog) TransformationsDialog(
+        onDismiss = { showTransformationsDialog = false }
+    ) { transformation, xFactor, yFactor ->
+        drawings = drawings.transform(transformation, xFactor, yFactor)
+    }
 
     LaunchedEffect(mouseEvent) {
         if (mouseEvent == MouseEvent.Down) currentPixels = 0
@@ -116,7 +133,7 @@ fun App() {
                     .onPointerEvent(PointerEventType.Press) { mouseEvent = MouseEvent.Down }
                     .onPointerEvent(PointerEventType.Move) {
                         if (mouseEvent == MouseEvent.Down) {
-                            drawings.add(it.calculateCentroid().withColor(color))
+                            drawings = drawings + it.calculateCentroid().withColor(color)
                             currentPixels++
                         }
                     }
@@ -128,7 +145,7 @@ fun App() {
                         } else false
                     }
             ) {
-                draw(drawings)
+                draw(drawings, pixelScale = pixelScale.toFloat())
             }
 
             Column(
@@ -138,14 +155,39 @@ fun App() {
                     .weight(3f)
                     .padding(24.dp)
             ) {
-                TextField(value = x,
-                    onValueChange = { x = it },
-                    label = { Text("X") }
+                Counter(
+                    value = pixelScale,
+                    onValueChange = { pixelScale = it },
+                    label = "Pixel scale"
                 )
-                TextField(value = y,
-                    onValueChange = { y = it },
-                    label = { Text("Y") }
+
+                Text(
+                    text = "Add pixel",
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
                 )
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    TextField(
+                        value = x,
+                        onValueChange = { x = it },
+                        label = { Text("X") },
+                        textStyle = LocalTextStyle.current.copy(textAlign = TextAlign.Center),
+                        modifier = Modifier.weight(1f),
+                    )
+                    TextField(
+                        value = y,
+                        onValueChange = { y = it },
+                        label = { Text("Y") },
+                        textStyle = LocalTextStyle.current.copy(textAlign = TextAlign.Center),
+                        modifier = Modifier.weight(1f),
+                    )
+                }
 
                 DisappearingSimpleButton(
                     label = "Desenhar pixel",
@@ -166,13 +208,13 @@ fun App() {
 
                 DisappearingSimpleButton(
                     label = "Transformar",
-                    onClick = {},
+                    onClick = { showTransformationsDialog = true },
                     show = drawings.isNotEmpty()
                 )
 
                 DisappearingSimpleButton(
                     label = "Apagar",
-                    onClick = drawings::clear,
+                    onClick = { drawings = emptyList() },
                     show = drawings.isNotEmpty()
                 )
             }

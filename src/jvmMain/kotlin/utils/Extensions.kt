@@ -8,7 +8,8 @@ import kotlin.math.roundToInt
 
 fun Float.normalizeToHexString() = (this * 255f).roundToInt().toString(16)
 
-fun Color.toHexString() = "#${alpha.normalizeToHexString()}${red.normalizeToHexString()}${green.normalizeToHexString()}${blue.normalizeToHexString()}"
+fun Color.toHexString() =
+    "#${alpha.normalizeToHexString()}${red.normalizeToHexString()}${green.normalizeToHexString()}${blue.normalizeToHexString()}"
 
 fun Offset.withColor(color: Color) = Point(x, y, color)
 
@@ -19,4 +20,8 @@ fun DrawScope.draw(pixels: List<Point>, pixelScale: Float = 1f) = pixels.forEach
         color = it.color,
         strokeWidth = pixelScale
     )
+}
+
+fun List<Point>.transform(transformation: Transformation, xFactor: Float, yFactor: Float) = map {
+    transformation.run { it.transform(xFactor, yFactor) }
 }
