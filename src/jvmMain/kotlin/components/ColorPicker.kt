@@ -40,7 +40,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.rememberDialogState
 import kotlin.math.roundToInt
-import toHexString
+import utils.toHexString
 
 @OptIn(ExperimentalAnimationApi::class)
 @Composable

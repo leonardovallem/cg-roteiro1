@@ -1,7 +1,7 @@
 import androidx.compose.desktop.ui.tooling.preview.Preview
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.calculateCentroid
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -17,6 +17,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -32,6 +33,8 @@ import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.isCtrlPressed
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.onPointerEvent
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
@@ -39,18 +42,21 @@ import androidx.compose.ui.window.application
 import components.ColorPicker
 import components.DisappearingSimpleButton
 import components.SimpleButton
+import utils.MouseEvent
+import utils.Point
+import utils.draw
+import utils.toHexString
+import utils.withColor
 
-@OptIn(
-    ExperimentalFoundationApi::class,
-    ExperimentalMaterial3Api::class,
-    ExperimentalComposeUiApi::class,
-)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalComposeUiApi::class)
 @Composable
 @Preview
 fun App() {
     val focusManager = LocalFocusManager.current
 
+    var mouseEvent by remember { mutableStateOf(MouseEvent.Up) }
     val drawings = remember { mutableStateListOf<Point>() }
+    var currentPixels by remember { mutableStateOf(0) }
 
     var showColorPicker by remember { mutableStateOf(false) }
     var x by remember { mutableStateOf("") }
@@ -68,11 +74,17 @@ fun App() {
         y = ""
     }
 
+    fun clearLastDrawing() = drawings.dropLast(currentPixels)
+
     if (showColorPicker) ColorPicker(
         value = color,
         onChange = { color = it },
         onDismiss = { showColorPicker = false }
     )
+
+    LaunchedEffect(mouseEvent) {
+        if (mouseEvent == MouseEvent.Down) currentPixels = 0
+    }
 
     MaterialTheme {
         Row(
@@ -100,11 +112,21 @@ fun App() {
                     .padding(1.dp)
                     .weight(7f)
                     .fillMaxHeight()
-//                    .pointerInput(Unit) {
-//                        detectDragGestures(matcher = PointerMatcher.Primary) {
-//                            drawings.add(it)
-//                        }
-//                    }
+                    .onPointerEvent(PointerEventType.Release) { mouseEvent = MouseEvent.Up }
+                    .onPointerEvent(PointerEventType.Press) { mouseEvent = MouseEvent.Down }
+                    .onPointerEvent(PointerEventType.Move) {
+                        if (mouseEvent == MouseEvent.Down) {
+                            drawings.add(it.calculateCentroid().withColor(color))
+                            currentPixels++
+                        }
+                    }
+                    // TODO make it work
+                    .onPreviewKeyEvent {
+                        if (it.isCtrlPressed && it.key == Key.Z) {
+                            clearLastDrawing()
+                            true
+                        } else false
+                    }
             ) {
                 draw(drawings)
             }
@@ -125,13 +147,13 @@ fun App() {
                     label = { Text("Y") }
                 )
 
-                Spacer(modifier = Modifier.weight(1f))
-
-                SimpleButton(
-                    label = "Desenhar",
+                DisappearingSimpleButton(
+                    label = "Desenhar pixel",
                     onClick = ::addDrawing,
-                    enabled = validPoint
+                    show = validPoint
                 )
+
+                Spacer(modifier = Modifier.weight(1f))
 
                 SimpleButton(label = "Cor", onClick = { showColorPicker = true }) {
                     Icon(
