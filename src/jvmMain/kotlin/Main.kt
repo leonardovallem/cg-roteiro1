@@ -36,8 +36,10 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.onPointerEvent
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
@@ -50,7 +52,6 @@ import utils.MouseEvent
 import utils.Point
 import utils.draw
 import utils.toHexString
-import utils.transform
 import utils.withColor
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalComposeUiApi::class)
@@ -60,6 +61,7 @@ fun App() {
     val focusManager = LocalFocusManager.current
 
     var mouseEvent by remember { mutableStateOf(MouseEvent.Up) }
+    var canvasSize by remember { mutableStateOf<IntSize?>(null) }
     var drawings by remember { mutableStateOf(emptyList<Point>()) }
     var currentPixels by remember { mutableStateOf(0) }
 
@@ -94,10 +96,10 @@ fun App() {
     )
 
     if (showTransformationsDialog) TransformationsDialog(
-        onDismiss = { showTransformationsDialog = false }
-    ) { transformation, xFactor, yFactor ->
-        drawings = drawings.transform(transformation, xFactor, yFactor)
-    }
+        onDismiss = { showTransformationsDialog = false },
+        points = drawings,
+        canvasSize = canvasSize ?: IntSize.Zero
+    ) { drawings = it }
 
     LaunchedEffect(mouseEvent) {
         if (mouseEvent == MouseEvent.Down) currentPixels = 0
@@ -144,6 +146,7 @@ fun App() {
                             true
                         } else false
                     }
+                    .onGloballyPositioned { canvasSize = it.size }
             ) {
                 draw(drawings, pixelScale = pixelScale.toFloat())
             }

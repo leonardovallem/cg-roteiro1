@@ -18,6 +18,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.LocalTextStyle
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
@@ -30,23 +31,38 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.rememberDialogState
+import utils.Point
 import utils.Transformation
+import utils.Transformations.mirrorCenter
+import utils.Transformations.mirrorX
+import utils.Transformations.mirrorY
+import utils.Transformations.rotate
+import utils.Transformations.scale
+import utils.Transformations.shearX
+import utils.Transformations.shearY
+import utils.Transformations.translate
+import utils.isDigitOrMinus
 
 @OptIn(ExperimentalAnimationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun TransformationsDialog(
     onDismiss: () -> Unit,
-    onTransform: (transformation: Transformation, xFactor: Float, yFactor: Float) -> Unit,
+    points: List<Point>,
+    canvasSize: IntSize,
+    onTransform: (List<Point>) -> Unit,
 ) {
     var selectedTransformation by remember { mutableStateOf<Transformation?>(null) }
     var xFactor by remember { mutableStateOf("") }
     var yFactor by remember { mutableStateOf("") }
+    var factor by remember { mutableStateOf("") }
 
     val xFactorFloat by remember { derivedStateOf { xFactor.toFloatOrNull() } }
     val yFactorFloat by remember { derivedStateOf { yFactor.toFloatOrNull() } }
+    val factorFloat by remember { derivedStateOf { factor.toFloatOrNull() } }
 
     Dialog(
         onCloseRequest = onDismiss,
@@ -88,25 +104,63 @@ fun TransformationsDialog(
                             TextButton(
                                 onClick = {
                                     onDismiss()
-                                    selectedTransformation?.let {
-                                        onTransform(it, yFactorFloat ?: 0f, yFactorFloat ?: 0f)
+                                    selectedTransformation?.let { transformation ->
+                                        onTransform(
+                                            when (transformation) {
+                                                Transformation.Scale -> points.map {
+                                                    it.scale(
+                                                        xFactor = xFactorFloat ?: 0f,
+                                                        yFactor = yFactorFloat ?: 0f
+                                                    )
+                                                }
+
+                                                Transformation.Translate -> points.map {
+                                                    it.translate(
+                                                        xFactor = xFactorFloat ?: 0f,
+                                                        yFactor = yFactorFloat ?: 0f
+                                                    )
+                                                }
+
+                                                Transformation.Rotate -> points.map {
+                                                    it.rotate(factorFloat ?: 0f)
+                                                }
+
+                                                Transformation.ShearX -> points.map {
+                                                    it.shearX(factorFloat ?: 0f)
+                                                }
+
+                                                Transformation.ShearY -> points.map {
+                                                    it.shearY(factorFloat ?: 0f)
+                                                }
+
+                                                Transformation.MirrorX -> points.mirrorX(canvasSize.width)
+                                                Transformation.MirrorY -> points.mirrorY(canvasSize.height)
+                                                Transformation.MirrorCenter -> points.mirrorCenter(canvasSize)
+                                            }
+                                        )
                                     }
                                 },
-                                enabled = listOf(xFactorFloat, yFactorFloat).any {
-                                    it != null && it != 0f
-                                },
+                                enabled = selectedTransformation?.let { type ->
+                                    if (type.hasOneFactor()) factorFloat != null && factorFloat != 0f
+                                    else if (type.hasTwoFactors()) listOf(
+                                        xFactorFloat,
+                                        yFactorFloat
+                                    ).any { it != null && it != 0f }
+                                    else true
+                                } ?: false,
                             ) {
                                 Icon(
                                     imageVector = Icons.Rounded.Done,
                                     contentDescription = null
                                 )
+
                                 Spacer(modifier = Modifier.width(12.dp))
                                 Text(selectedTransformation?.name ?: "Transform")
                             }
                         }
                     }
 
-                    item {
+                    if (selectedTransformation?.hasTwoFactors() == true) item {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(16.dp),
@@ -115,7 +169,7 @@ fun TransformationsDialog(
                             TextField(
                                 value = xFactor,
                                 onValueChange = { value ->
-                                    if (value.all { it.isDigit() }) xFactor = value
+                                    if (value.all { it.isDigitOrMinus() }) xFactor = value
                                 },
                                 label = { Text("X Factor") },
                                 textStyle = LocalTextStyle.current.copy(textAlign = TextAlign.Center),
@@ -125,13 +179,34 @@ fun TransformationsDialog(
                             TextField(
                                 value = yFactor,
                                 onValueChange = { value ->
-                                    if (value.all { it.isDigit() }) yFactor = value
+                                    if (value.all { it.isDigitOrMinus() }) yFactor = value
                                 },
                                 label = { Text("Y Factor") },
                                 textStyle = LocalTextStyle.current.copy(textAlign = TextAlign.Center),
                                 modifier = Modifier.weight(1f),
                             )
                         }
+                    } else if (selectedTransformation?.hasOneFactor() == true) item {
+                        TextField(
+                            value = factor,
+                            onValueChange = { value ->
+                                if (value.all { it.isDigitOrMinus() }) factor = value
+                            },
+                            label = { Text("Factor") },
+                            textStyle = LocalTextStyle.current.copy(textAlign = TextAlign.Center),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(24.dp),
+                        )
+                    } else item {
+                        Text(
+                            text = "Apply now",
+                            style = MaterialTheme.typography.labelLarge,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(24.dp)
+                        )
                     }
                 }
             }

@@ -22,6 +22,4 @@ fun DrawScope.draw(pixels: List<Point>, pixelScale: Float = 1f) = pixels.forEach
     )
 }
 
-fun List<Point>.transform(transformation: Transformation, xFactor: Float, yFactor: Float) = map {
-    transformation.run { it.transform(xFactor, yFactor) }
-}
+fun Char.isDigitOrMinus() = isDigit() || equals('-')
